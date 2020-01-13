@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from utils.augmentations import *
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
-
+from tqdm import tqdm
 
 def pad_to_square(img, pad_value):
     c, h, w = img.shape
@@ -59,11 +59,14 @@ class ImageFolder(Dataset):
 
 class PandasDataset(Dataset):
     def __init__(self, data_path, img_size=416, augment=True, multiscale=True, normalized_labels=True):
+        print(f'Loading from {data_path}...')
+        print(f'Loading masks...')
         all_masks = PandasDataset.get_all_mask_names(data_path)
+        print(f'Loaded {len(all_masks)} masks')
         rows = []
-        columns = ["exp_name", "image_path", "mask_name", "mask_path", "label_id", "gt_x1", "gt_y1", "gt_x2", "gt_y2", "width", "height"]
+        columns = ["exp_name", "img_path", "mask_name", "mask_path", "label_id", "gt_x1", "gt_y1", "gt_x2", "gt_y2", "width", "height"]
 
-        for image_masks in all_masks:
+        for image_masks in tqdm(all_masks, desc='Read masks:'):
             for mask in image_masks.get("exp_masks"):
 
                 mask_path = os.path.join(data_path, image_masks.get("exp_name"), 'masks', mask["name"])
@@ -71,7 +74,7 @@ class PandasDataset(Dataset):
                 gt_x1, gt_y1, gt_x2, gt_y2 = PandasDataset.get_bbox(image)
                 row = (
                     image_masks.get("exp_name"), 
-                    image_masks.get("image_path"), 
+                    image_masks.get("img_path"), 
                     mask.get("name"), 
                     mask_path, 
                     mask.get("label_id"), 
@@ -93,6 +96,7 @@ class PandasDataset(Dataset):
         self.min_size = self.img_size - 3 * 32
         self.max_size = self.img_size + 3 * 32
         self.batch_count = 0
+        print(f'Loading data done!')
     
     def __getitem__(self, index):
 
